@@ -67,8 +67,8 @@ namespace godgun {
 
     class EPollIOLoop : public IOLoop {
     public:
-
       using ClientItem = std::pair<int, std::shared_ptr<struct sockaddr_in>>;
+      using ClientItemR = std::pair<int, std::shared_ptr<struct sockaddr_in>>&;
       EPollIOLoop(int argc, char* argv[]);
       virtual ~EPollIOLoop();
 
@@ -78,8 +78,10 @@ namespace godgun {
 
       virtual int start() throw (IOLoopException) override;
       virtual void stop() throw (IOLoopException) override;
-      ClientItem& pop();
-      void push(ClientItem& item);
+
+      bool empty_q();
+      ClientItem pop_q();
+      void push_q(ClientItem&& item);
 
     private:
       int _epoll_fd;

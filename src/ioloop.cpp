@@ -125,14 +125,21 @@ namespace godgun {
       IOLoop::remove_handler(fd);
     }
 
-    ClientItem EPollIOLoop::pop() {
+    EPollIOLoop::ClientItem EPollIOLoop::pop_q() {
       std::lock_guard<std::mutex> guard(_queue_mutex);
       auto tmp = _queue.front();
       _queue.pop();
       return tmp;
     }
 
-    void push(ClientItem&& item) {
+    bool EPollIOLoop::empty_q() {
+      std::lock_guard<std::mutex> guard(_queue_mutex);
+      return _queue.empty();
+    }
+
+
+
+    void EPollIOLoop::push_q(EPollIOLoop::ClientItem&& item) {
       std::lock_guard<std::mutex> guard(_queue_mutex);
       _queue.emplace(item);
     }
@@ -159,7 +166,9 @@ namespace godgun {
             }
           } else {
             wait_time = 1;
-
+            if (!empty_q()) {
+              auto tmp = pop_q();
+            }
           }
         } else {
           break;
