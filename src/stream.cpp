@@ -15,7 +15,7 @@ namespace godgun {
     IOStreamException::IOStreamException(const std::string& msg)
       : std::runtime_error(msg) {}
 
-    IOStream::IOStream(const SocketClient& client, ioloop::IOLoop& loop)
+    IOStream::IOStream(const socket::SocketClient& client, ioloop::IOLoop& loop)
       : _client(client), _ioloop(loop), _doing(false), _write_buf_freezing(false),
         _read_num(-1), _read_until(nullptr), _closed(false) {
 
@@ -23,7 +23,7 @@ namespace godgun {
                           static_cast<int>(ioloop::EventType::EV_READ) |
                           static_cast<int>(ioloop::EventType::EV_WRITE),
                           [this] (int fd, int type, void *arg, ioloop::IOLoop& loop)
-                          { __handler_poll(fd, type, arg, _loop); }, &_client);
+                          { __handler_poll(fd, type, arg, _ioloop); }, &_client);
 
       unsigned int _sz = sizeof(_send_buf_size);
       if (getsockopt(_client.fd(), SOL_SOCKET, SO_SNDBUF, &_send_buf_size, &_sz)) {
@@ -45,7 +45,7 @@ namespace godgun {
       delete [] _recv_buf;
     }
 
-    SocketClient IOStream::client() const {
+    socket::SocketClient IOStream::client() const {
       return _client;
     }
 
@@ -104,7 +104,7 @@ namespace godgun {
     }
 
     void IOStream::__handler_poll(int fd, int type, void *arg, ioloop::IOLoop& loop) {
-      SocketClient *clientSocket = static_cast<SocketClient *>(arg);
+      socket::SocketClient *clientSocket = reinterpret_cast<socket::SocketClient*>(arg);
 
       if (type & static_cast<int>(ioloop::EventType::EV_READ)) {
         //std::lock_guard<std::mutex> lck(this->_rdmutex);
@@ -137,7 +137,7 @@ namespace godgun {
             try {
               total = clientSocket->send(_send_buf, total);
             }
-            catch (SocketError& except) {
+            catch (socket::SocketError& except) {
               if (except.code() == EAGAIN || except.code() == EWOULDBLOCK) {
                 break;
               }
@@ -167,7 +167,7 @@ namespace godgun {
       this->close();
     }
 
-    size_t IOStream::__read_to_buffer(SocketClient *client) throw (IOStreamException) {
+    size_t IOStream::__read_to_buffer(socket::SocketClient *client) throw (IOStreamException) {
       size_t readsize = 0;
       while (true) {
         int n = 0;
@@ -176,7 +176,7 @@ namespace godgun {
           readsize += n;
           std::copy(_recv_buf, _recv_buf + n, back_inserter(_rdbuf));
         }
-        catch (SocketError& except) {
+        catch (socket::SocketError& except) {
           if (except.code() == EAGAIN || except.code() == EWOULDBLOCK) break;
           else {
             std::cerr << __FILE__ << ":" << __LINE__ << " " << except.fd() << " " << except.what() << std::endl;

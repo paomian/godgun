@@ -81,9 +81,11 @@ namespace godgun {
     }
 
     void SocketClient::close() {
-      if (::close(_fd) < 0)
+      if (::close(_fd) < 0) {
         std::cerr << _fd << " ";
         perror("SocketClient:close");
+        1/0;
+      }
     }
 
     int SocketClient::fd() const {

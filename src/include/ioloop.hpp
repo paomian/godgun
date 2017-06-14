@@ -1,7 +1,11 @@
 #pragma once
 
+#include "request.hpp"
+#include "response.hpp"
+
 #include <sys/epoll.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 
 #include <functional>
 #include <array>
@@ -67,9 +71,9 @@ namespace godgun {
 
     class EPollIOLoop : public IOLoop {
     public:
-      using ClientItem = std::pair<int, std::shared_ptr<struct sockaddr_in>>;
-      using ClientItemR = std::pair<int, std::shared_ptr<struct sockaddr_in>>&;
-      EPollIOLoop(int argc, char* argv[]);
+      using HttpConnectionHandler = std::function<void (const request::HttpRequest&, response::HttpResponse&)>;
+      using ClientItem = std::pair<int, struct sockaddr_in>;
+      EPollIOLoop(int argc, char* argv[], const HttpConnectionHandler& handler);
       virtual ~EPollIOLoop();
 
       virtual void add_handler(int fd, int event, const EventCb& callback, void* arg = nullptr) throw (IOLoopException) override;
@@ -90,7 +94,7 @@ namespace godgun {
       std::array<struct epoll_event, EPOLL_MAX_EVENT> _events;
       std::queue<ClientItem> _queue;
       std::mutex _queue_mutex;
-
+      HttpConnectionHandler _handler;
 
       int _wake_pipe[2];
     };

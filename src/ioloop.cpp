@@ -1,4 +1,5 @@
 #include "include/ioloop.hpp"
+#include "include/connection.hpp"
 #include <getopt.h>
 #include <signal.h>
 
@@ -53,8 +54,8 @@ namespace godgun {
     IOEvent::IOEvent(int fd, EventCb cb, void* arg)
       : fd(fd), callback(cb), arg(arg) {}
 
-    EPollIOLoop::EPollIOLoop(int argc, char* argv[])
-      : IOLoop(argc, argv) {
+    EPollIOLoop::EPollIOLoop(int argc, char* argv[], const EPollIOLoop::HttpConnectionHandler& handler)
+      : IOLoop(argc, argv),_handler(handler)  {
       if ((_epoll_fd = epoll_create(EPOLL_MAX_EVENT)) < 0) {
         perror("epoll_create");
         std::exit(EXIT_FAILURE);
@@ -165,13 +166,17 @@ namespace godgun {
               }
             }
           } else {
-            wait_time = 1;
+            wait_time = 10;
             if (!empty_q()) {
               auto tmp = pop_q();
+              auto client = socket::SocketClient(tmp.first,tmp.second,true);
+              new connection::HttpConnection(client,*this,_handler);
             }
           }
         } else {
-          break;
+          std::cout << "active:" << active_event << std::endl;
+          perror("epoll wait");
+          //break;
         }
       }
     FAILED:
